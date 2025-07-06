@@ -1,0 +1,272 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings - Cinematch</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: white;
+      padding: 20px;
+    }
+    .neon-text {
+      font-weight: bold;
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .popup {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: #1e293b;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      width: 350px;
+      display: none;
+      z-index: 100;
+    }
+    .popup.active { display: block; }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <header class="flex items-center justify-between mb-10 relative">
+    <div class="flex items-center space-x-10">
+      <h1 class="text-3xl neon-text font-bold">Cinematch</h1>
+      <a href="/dashboard" class="nav-home hover:underline text-lg">Home</a>
+      <a href="/favourites" class="nav-fav hover:underline text-lg">Favourites</a>
+    </div>
+    <div class="relative">
+      <button id="profileBtn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">User</button>
+      <div id="dropdown" class="absolute top-full right-0 bg-gray-800 border border-gray-600 rounded hidden">
+        <a href="/settings" class="block px-4 py-2 font-semibold underline">Settings</a>
+        <a href="#" id="logoutBtn" class="block px-4 py-2 hover:bg-gray-700">Logout</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-xl mx-auto text-center">
+    <h2 class="text-2xl font-bold text-white mb-8">SETTINGS</h2>
+    <div class="space-y-4">
+      <button onclick="openPasswordPopup()" class="w-full bg-gray-700 py-3 rounded hover:bg-gray-600">Change Password</button>
+      <button onclick="openUsernamePopup()" class="w-full bg-gray-700 py-3 rounded hover:bg-gray-600">Change Username</button>
+      <button onclick="openDeletePrefPopup()" class="w-full bg-gray-700 py-3 rounded hover:bg-gray-600">Delete Preferences</button>
+      <button onclick="openDeletePopup()" class="w-full bg-red-700 py-3 rounded hover:bg-red-800">Delete Account</button>
+    </div>
+  </main>
+
+  <!-- Change Password Popup -->
+  <div id="passwordPopup" class="popup">
+    <h3 class="text-lg font-bold mb-4">Change Password</h3>
+    <input id="currentPassword" type="password" placeholder="Current Password" class="w-full p-2 mb-4 rounded bg-gray-800 border border-gray-600">
+    <div id="newPasswordSection" class="">
+      <input id="newPassword" type="password" placeholder="New Password" class="w-full p-2 mb-4 rounded bg-gray-800 border border-gray-600">
+      <button onclick="confirmPasswordChange()" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded">Confirm</button>
+    </div>
+  </div>
+
+  <div id="usernamePopup" class="popup">
+      <h3 class="text-lg font-bold mb-4">Change Username</h3>
+      <input id="newUsername" type="text" placeholder="New Username" class="w-full p-2 mb-4 rounded bg-gray-800 border border-gray-600">
+      <button onclick="changeUsername()" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded">Confirm</button>
+  </div>
+
+  <!-- Confirmation Dialog -->
+  <div id="confirmPopup" class="popup">
+    <h3 class="text-lg font-bold mb-4">Are you sure you want to change your password?</h3>
+    <div class="flex justify-between">
+      <button onclick="finalizePasswordChange()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Yes</button>
+      <button onclick="closePopup('confirmPopup')" class="bg-gray-500 px-4 py-2 rounded">Cancel</button>
+    </div>
+  </div>
+
+  <div id="deletePrefPopup" class="popup">
+    <h3 class="text-lg font-bold mb-4">Are you sure you want to delete your preferences?</h3>
+    <div class="flex justify-between">
+      <button onclick="confirmDeletePreferences()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Confirm</button>
+      <button onclick="closePopup('deletePrefPopup')" class="bg-gray-500 px-4 py-2 rounded">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Delete Account Popup -->
+  <div id="deleteAccountPopup" class="popup">
+    <h3 class="text-lg font-bold mb-4">Are you sure you want to delete your account?</h3>
+    <p class="text-sm text-gray-300 mb-4">All your data will be permanently deleted.</p>
+    <div class="flex justify-between">
+      <button onclick="confirmDeleteAccount()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Yes</button>
+      <button onclick="closePopup('deleteAccountPopup')" class="bg-gray-500 px-4 py-2 rounded">Cancel</button>
+    </div>
+  </div>
+
+  
+  <!-- Logout Confirmation Popup -->
+  <div id="logoutConfirmPopup" class="popup">
+    <h3 class="text-lg font-bold mb-4">Are you sure you want to logout?</h3>
+    <div class="flex justify-between">
+      <button onclick="confirmLogout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Yes</button>
+      <button onclick="closePopup('logoutConfirmPopup')" class="bg-gray-500 px-4 py-2 rounded">Cancel</button>
+    </div>
+  </div>
+
+
+
+  <!-- JS -->
+  <script>
+
+     const tokenn = localStorage.getItem("access_token");
+
+    // If token is missing, redirect to login
+    if (!tokenn) {
+      window.location.href = "/auth";
+    }
+
+    const token = localStorage.getItem("access_token");
+    const username = localStorage.getItem("username");
+    document.getElementById("profileBtn").textContent = username || "User";
+    document.getElementById("profileBtn").onclick = () => {
+      document.getElementById("dropdown").classList.toggle("hidden");
+    };
+    
+    document.getElementById("logoutBtn").onclick = () => {
+      document.getElementById("logoutConfirmPopup").classList.add("active");
+    };
+
+
+    function openPasswordPopup() {
+      document.getElementById("passwordPopup").classList.add("active");
+    }
+
+    async function confirmPasswordChange() {
+      const currentPass = document.getElementById("currentPassword").value;
+      const newPass = document.getElementById("newPassword").value;
+
+      const res = await fetch("/users/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ current_password: currentPass, new_password: newPass })
+      });
+
+      if (res.ok) {
+        // blacklist token
+        await fetch("/auth/logout", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        // Clear session & redirect
+        localStorage.clear();
+        alert("Password changed successfully. Redirecting to login...");
+        window.location.href = "/auth";
+      } else {
+        alert("Incorrect current password");
+      }
+    }
+
+    function closePopup(id) {
+      document.getElementById(id).classList.remove("active");
+    }
+
+    function openUsernamePopup() {
+      document.getElementById("usernamePopup").classList.add("active");
+    }
+
+  async function changeUsername() {
+    const newUsername = document.getElementById("newUsername").value;
+
+    if (!newUsername.trim()) {
+      alert("Username cannot be empty.");
+      return;
+    }
+
+    const res = await fetch("/users/change-username", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ new_username: newUsername })
+    });
+
+    if (res.ok) {
+      alert("Username updated!");
+      localStorage.setItem("username", newUsername);
+      document.getElementById("profileBtn").textContent = newUsername;
+      closePopup("usernamePopup");
+    } else {
+      alert("Failed to update username.");
+    }
+  }
+
+  function openDeletePrefPopup() {
+  document.getElementById("deletePrefPopup").classList.add("active");
+}
+
+  async function confirmDeletePreferences() {
+    const res = await fetch("/users/delete-preferences", {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (res.ok) {
+      alert("Preferences deleted.");
+      closePopup("deletePrefPopup");
+    } else {
+      alert("Failed to delete preferences.");
+    }
+  }
+
+
+  async function confirmDeleteAccount() {
+    const res = await fetch("/users/delete-account", {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (res.ok) {
+      await fetch("/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      localStorage.clear();
+      alert("Account deleted. Redirecting...");
+      window.location.href = "/auth";
+    } else {
+      alert("Failed to delete account.");
+    }
+  }
+
+    function openDeletePopup() {
+      document.getElementById("deleteAccountPopup").classList.add("active");
+    }
+
+    async function confirmLogout() {
+      const res = await fetch("/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        localStorage.clear();
+        alert("Logged out successfully.");
+        window.location.href = "/auth";
+      } else {
+        alert("Logout failed.");
+      }
+    }
+
+
+
+  
+  </script>
+</body>
+</html>

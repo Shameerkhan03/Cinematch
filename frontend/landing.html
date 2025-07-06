@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cinematch - Welcome</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: white;
+    }
+
+    .neon-text {
+      background: linear-gradient(to right, #00c6ff, #8a2be2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(10px);
+      border-radius: 1rem;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+      transition: all 0.3s ease-in-out;
+    }
+
+    .glass:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 25px rgba(0, 255, 255, 0.2);
+    }
+
+    .btn-glow {
+      background: linear-gradient(to right, #00c6ff, #8a2be2);
+      color: black;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 15px #00c6ff;
+    }
+
+    .btn-glow:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px #00c6ff, 0 0 35px #8a2be2;
+    }
+  </style>
+</head>
+<body class="min-h-screen px-6 py-10">
+
+  <!-- Header -->
+  <header class="flex justify-between items-center mb-20">
+    <h1 class="text-4xl font-bold neon-text">Cinematch</h1>
+    <div class="space-x-4">
+      <a href="/auth#login" class="btn-glow">Login</a>
+      <a href="/auth#signup" class="btn-glow">Sign Up</a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="text-center max-w-4xl mx-auto mb-20">
+    <h2 class="text-5xl font-bold mb-6">Find Movies That Match <span class="neon-text">You</span></h2>
+    <p class="text-lg text-gray-300 mb-10">Cinematch delivers personalized recommendations based on your taste using intelligent AI — never scroll aimlessly again.</p>
+    <a href="/auth#signup" class="btn-glow text-lg">Start Matching</a>
+  </section>
+
+  <!-- Features Section -->
+  <section class="grid md:grid-cols-3 gap-10 max-w-6xl mx-auto">
+    <div class="glass p-6 text-center">
+      <i class="fas fa-brain text-4xl mb-4 text-cyan-400"></i>
+      <h3 class="text-xl font-semibold mb-2">AI-Powered Suggestions</h3>
+      <p class="text-gray-300">Cinematch uses advanced algorithms to recommend films you’ll love based on your unique preferences.</p>
+    </div>
+    <div class="glass p-6 text-center">
+      <i class="fas fa-thumbs-up text-4xl mb-4 text-green-400"></i>
+      <h3 class="text-xl font-semibold mb-2">Like & Learn</h3>
+      <p class="text-gray-300">Like movies and instantly shape your profile — get smarter suggestions with every click.</p>
+    </div>
+    <div class="glass p-6 text-center">
+      <i class="fas fa-fire text-4xl mb-4 text-pink-400"></i>
+      <h3 class="text-xl font-semibold mb-2">Trending & Hidden Gems</h3>
+      <p class="text-gray-300">Explore what’s hot or dive into curated hidden gems based on your genre and mood.</p>
+    </div>
+  </section>
+
+</body>
+</html>

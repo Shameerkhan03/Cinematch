@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cinematch - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: white;
+      min-height: 100vh;
+    }
+
+    .popup {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: #1e293b;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      width: 300px;
+      display: none;
+      z-index: 1000;
+    }
+    .popup.active {
+      display: block;
+    }
+
+    .neon-text {
+      font-weight: bold;
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .movie-grid-container {
+      position: relative;
+      overflow: hidden; /* Important for the sliding effect */
+    }
+
+    .movie-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      transition: transform 0.5s ease-in-out; /* Smooth slide transition */
+    }
+
+    .movie-card {
+      width: 158px;
+    }
+
+    .movie-poster {
+      width: 100%;
+      aspect-ratio: 2 / 3;
+      object-fit: cover;
+      border-radius: 0.5rem;
+    }
+
+    .dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: #1f2937;
+      border: 1px solid #444;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      z-index: 10;
+    }
+
+    .dropdown a {
+      display: block;
+      padding: 0.75rem 1.5rem;
+      color: white;
+      text-decoration: none;
+    }
+
+    .movie-card {
+      cursor: pointer;
+    }
+
+    .movie-card:hover {
+      transform: scale(1.03);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .dropdown a:hover {
+      background-color: #374151;
+    }
+
+    .movie-card {
+      transition: transform 0.4s ease;
+    }
+  </style>
+</head>
+<body class="px-8 py-6">
+
+  <header class="flex items-center justify-between mb-10 relative">
+    <div class="flex items-center space-x-10">
+      <h1 class="text-3xl neon-text font-bold">Cinematch</h1>
+      <a href="/dashboard" class="nav-home hover:underline text-lg">Home</a>
+      <a href="/favourites" class="nav-fav hover:underline text-lg">Favourites</a>
+    </div>
+
+    <div class="relative w-full px-10" id="searchContainer">
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="Search movies..."
+        class="w-full py-2 px-4 rounded-lg bg-gray-800 text-white border border-gray-600 focus:outline-none"
+        autocomplete="off"
+      />
+      <ul
+        id="searchSuggestions"
+        class="absolute top-full left-0 right-0 bg-gray-800 text-white border border-gray-700 rounded mt-1 max-h-80 overflow-y-auto hidden z-50"
+      ></ul>
+    </div>
+
+    <div class="relative">
+      <button id="profileBtn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">
+        User
+      </button>
+      <div id="dropdown" class="dropdown hidden">
+        <a href="/settings">Settings</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </div>
+    </div>
+
+      <div id="logoutPopup" class="popup hidden">
+      <h3 class="text-lg font-bold mb-4">Are you sure you want to logout?</h3>
+      <div class="flex justify-between">
+        <button id="confirmLogoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Yes</button>
+        <button onclick="closePopup('logoutPopup')" class="bg-gray-500 px-4 py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="mb-10">
+    <h2 class="text-2xl font-semibold mb-4">Recommended For You</h2>
+    <p id="cbfFallback" class="hidden text-gray-400 italic mb-4">Like some movies to get recommendations.</p>
+    <div id="cbfWrapper" class="text-center">
+      <div class="movie-grid-container">
+        <div id="cbfSection" class="movie-grid"></div>
+      </div>
+      <div class="flex justify-center gap-4 mt-6">
+        <button id="cbfSection-prev" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded hidden">&lt; Previous</button>
+        <button id="cbfSection-next" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded hidden">Next &gt;</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="text-2xl font-semibold mb-4">People Like You Also Like</h2>
+    <p id="cfFallback" class="hidden text-gray-400 italic mb-4">No collaborative recommendations yet.</p>
+    <div id="cfWrapper" class="text-center">
+      <div class="movie-grid-container">
+        <div id="cfSection" class="movie-grid"></div>
+      </div>
+      <div class="flex justify-center gap-4 mt-6">
+        <button id="cfSection-prev" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded hidden">&lt; Previous</button>
+        <button id="cfSection-next" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded hidden">Next &gt;</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="text-2xl font-semibold mb-4">Explore More</h2>
+    <div id="randomWrapper" class="text-center">
+      <div class="movie-grid-container">
+        <div id="randomSection" class="movie-grid"></div>
+      </div>
+      <div class="flex justify-center gap-4 mt-6">
+        <button id="randomSection-prev" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded hidden">&lt; Previous</button>
+        <button id="randomSection-next" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded hidden">Next &gt;</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const sectionPaging = {};
+    const tokenn = localStorage.getItem("access_token");
+
+    // If token is missing, redirect to login
+    if (!tokenn) {
+      window.location.href = "/auth";
+    }
+
+    document.getElementById("profileBtn").addEventListener("click", () => {
+      document.getElementById("dropdown").classList.toggle("hidden");
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      document.getElementById("logoutPopup").classList.remove("hidden");
+    });
+
+    document.addEventListener("click", (e) => {
+      const profileBtn = document.getElementById("profileBtn");
+      const dropdown = document.getElementById("dropdown");
+
+      // If click is outside both the button and the dropdown, hide it
+      if (!profileBtn.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add("hidden");
+      }
+    });
+
+    const username = localStorage.getItem("username") || "User";
+    document.getElementById("profileBtn").textContent = username;
+
+    const accessToken = localStorage.getItem("access_token");
+
+    async function fetchAndDisplay(endpoint, sectionId, fallbackId) {
+      try {
+        const res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        const movies = await res.json();
+        if (!Array.isArray(movies) || movies.length === 0) {
+          if (fallbackId) {
+            document.getElementById(fallbackId).classList.remove("hidden");
+          }
+          return;
+        }
+
+        // Fetch TMDb metadata in parallel
+        const movieData = await Promise.all(
+          movies.map(movie => {
+            const title = movie.movie_title || movie.title; // supports both CBF/CF/random
+            return fetch(`/tmdb/search?query=${encodeURIComponent(title)}`)
+              .then(res => res.json())
+              .then(results => ({
+                originalTitle: title,
+                tmdb: results.find(m => m.title.toLowerCase() === title.toLowerCase()) || results[0]
+              }));
+          })
+        );
+
+        // Clean undefined entries
+        const validMovies = movieData.filter(m => m.tmdb);
+
+        console.log("Movies loaded for", sectionId, ":", validMovies.length);
+
+        // Store for pagination
+        sectionPaging[sectionId] = {
+          data: validMovies,
+          index: 0,
+          chunkSize: 16
+        };
+
+        renderChunk(sectionId, 'next'); // Initial render
+      } catch (err) {
+        console.error(`Error loading ${sectionId}:`, err);
+      }
+    }
+
+    function renderChunk(sectionId, direction) {
+      const { data, index, chunkSize } = sectionPaging[sectionId];
+      const container = document.getElementById(sectionId);
+      const prevBtn = document.getElementById(`${sectionId}-prev`);
+      const nextBtn = document.getElementById(`${sectionId}-next`);
+
+      // Calculate the new index based on direction
+      let newIndex = index;
+      if (direction === 'next') {
+        newIndex = Math.min(index + chunkSize, data.length);
+      } else if (direction === 'prev') {
+        newIndex = Math.max(0, index - chunkSize);
+      }
+
+      sectionPaging[sectionId].index = newIndex;
+      const chunk = data.slice(newIndex, newIndex + chunkSize);
+
+      // Apply slide transition
+      const gridContainer = container.parentElement;
+      gridContainer.style.transform = direction === 'next' ? 'translateX(-100%)' : 'translateX(100%)';
+      gridContainer.style.opacity = '0';
+
+      setTimeout(() => {
+        container.innerHTML = ""; // Clear current cards
+        chunk.forEach(({ originalTitle, tmdb }) => {
+          const poster = tmdb?.poster_path
+            ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}`
+            : "https://via.placeholder.com/200x300?text=No+Poster";
+
+          const card = document.createElement("div");
+          card.className = "movie-card transition-transform duration-500 ease-in-out";
+          card.innerHTML = `
+            <img src="${poster}" loading="lazy" class="movie-poster" alt="${originalTitle}" />
+            <p class="mt-2 text-sm text-center">${originalTitle}</p>
+          `;
+          card.onclick = () => {
+            window.location.href = `/movie?movie_id=${tmdb.id}&title=${encodeURIComponent(tmdb.title)}`;
+          };
+          container.appendChild(card);
+        });
+
+        // Reset transform and opacity
+        gridContainer.style.transition = 'none'; // Disable transition temporarily
+        gridContainer.style.transform = 'translateX(0)';
+        gridContainer.style.opacity = '1';
+        setTimeout(() => { // Re-enable transition after reset
+          gridContainer.style.transition = 'transform 0.5s ease-in-out, opacity 0.5s ease-in-out';
+        }, 10);
+
+        // Update button visibility and state
+        prevBtn.classList.toggle("hidden", newIndex === 0);
+        nextBtn.classList.toggle("hidden", newIndex + chunkSize >= data.length);
+      }, 500); // Match this timeout with the CSS transition duration
+    }
+
+    // Add event listeners for the new "Previous" and "Next" buttons
+    function setupPaginationButtons(sectionId) {
+      const prevBtn = document.getElementById(`${sectionId}-prev`);
+      const nextBtn = document.getElementById(`${sectionId}-next`);
+
+      if (prevBtn) {
+        prevBtn.onclick = () => renderChunk(sectionId, 'prev');
+      }
+      if (nextBtn) {
+        nextBtn.onclick = () => renderChunk(sectionId, 'next');
+      }
+    }
+
+    fetchAndDisplay("/recommend/cbf", "cbfSection", "cbfFallback");
+    fetchAndDisplay("/recommend/cf", "cfSection", "cfFallback");
+    fetchAndDisplay("/recommend/random", "randomSection", null);
+
+    setupPaginationButtons("cbfSection");
+    setupPaginationButtons("cfSection");
+    setupPaginationButtons("randomSection");
+
+    // Highlight Home if on dashboard
+    if (window.location.pathname === "/dashboard") {
+      const homeLink = document.querySelector('a[href="/dashboard"]');
+      if (homeLink) {
+        homeLink.classList.add("font-semibold", "underline");
+        homeLink.classList.remove("text-blue-400");
+      }
+    }
+
+    // Movie search
+    const searchInput = document.getElementById("searchInput");
+    const suggestionsList = document.getElementById("searchSuggestions");
+    const token = localStorage.getItem("access_token");
+
+    let debounceTimeout;
+    searchInput.addEventListener("input", () => {
+      clearTimeout(debounceTimeout);
+      const query = searchInput.value.trim();
+      if (!query) {
+        suggestionsList.classList.add("hidden");
+        suggestionsList.innerHTML = "";
+        return;
+      }
+
+      debounceTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`/recommend/search?query=${encodeURIComponent(query)}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          if (!res.ok) throw new Error("No matches");
+
+          const data = await res.json();
+
+          suggestionsList.innerHTML = "";
+          data.forEach(movie => {
+          const li = document.createElement("li");
+          li.className = "flex items-center gap-4 px-4 py-2 hover:bg-blue-600 cursor-pointer";
+
+          const poster = movie.poster_path
+            ? `https://image.tmdb.org/t/p/w92${movie.poster_path}`
+            : "https://via.placeholder.com/50x75?text=No+Poster";
+
+          li.innerHTML = `
+            <img src="${poster}" alt="${movie.title}" class="w-10 h-16 object-cover rounded shadow" />
+            <span>${movie.title}</span>
+          `;
+
+          li.onclick = () => {
+            suggestionsList.classList.add("hidden");
+            window.location.href = `/movie?movie_id=${movie.movie_id}&title=${encodeURIComponent(movie.title)}`;
+          };
+
+          suggestionsList.appendChild(li);
+        });
+
+          suggestionsList.classList.remove("hidden");
+        } catch (err) {
+          suggestionsList.classList.add("hidden");
+          suggestionsList.innerHTML = "";
+        }
+      }, 300);
+    });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!document.getElementById("searchContainer").contains(e.target)) {
+        suggestionsList.classList.add("hidden");
+      }
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      document.getElementById("logoutPopup").classList.add("active");
+    });
+
+    document.getElementById("confirmLogoutBtn").addEventListener("click", async () => {
+      const token = localStorage.getItem("access_token");
+      await fetch("/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      localStorage.clear();
+      window.location.href = "/auth";
+    });
+
+    // Close popup when clicking outside
+    document.addEventListener("click", (e) => {
+      const popup = document.getElementById("logoutPopup");
+      const dropdown = document.getElementById("dropdown");
+      if (
+        popup.classList.contains("active") &&
+        !popup.contains(e.target) &&
+        e.target.id !== "logoutBtn"
+      ) {
+        popup.classList.remove("active");
+      }
+
+      if (!document.getElementById("searchContainer").contains(e.target)) {
+        suggestionsList.classList.add("hidden");
+      }
+    });
+
+    function closePopup(popupId) {
+      document.getElementById(popupId).classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

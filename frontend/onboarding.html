@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cinematch - Onboarding</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: white;
+      min-height: 100vh;
+    }
+    .neon-text {
+      font-weight: bold;
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .movie-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .movie-card {
+      width: 148px;
+      cursor: pointer;
+    }
+    .movie-card:hover {
+      transform: scale(1.05);
+      transition: 0.2s;
+    }
+    .movie-card.liked {
+      border: 2px solid #22c55e;
+    }
+  </style>
+</head>
+<body class="px-8 py-6">
+  <header class="mb-10">
+    <h1 class="text-4xl neon-text font-bold text-center">Tell Us About Yourself</h1>
+    <p class="text-center text-gray-300 mt-2">Like at least 5 movies to get personalized recommendations.</p>
+  </header>
+
+  <main id="genreSections" class="space-y-10"></main>
+
+  <div class="flex justify-center mt-10">
+    <button id="nextBtn" class="hidden px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white">Next</button>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("access_token");
+    if (!token) window.location.href = "/auth";
+
+    const likedMovies = new Set();
+    const nextBtn = document.getElementById("nextBtn");
+
+    async function fetchMoviesByGenre() {
+      const res = await fetch("/recommend/random", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const movies = await res.json();
+
+      // Group by genre
+      const genres = {};
+
+      for (const movie of movies) {
+        try {
+          const tmdbRes = await fetch(`/tmdb/movie/${movie.movie_id}`);
+          const tmdb = await tmdbRes.json();
+          const movieGenres = tmdb.genres?.map(g => g.name) || ["Misc"];
+          const posterPath = tmdb.poster_path
+            ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}`
+            : "https://via.placeholder.com/200x300?text=No+Poster";
+
+          for (const genre of movieGenres) {
+            if (!genres[genre]) genres[genre] = [];
+            genres[genre].push({
+              movie_id: movie.movie_id,
+              title: movie.title,
+              poster_path: posterPath,
+            });
+          }
+        } catch (err) {
+          console.error("Failed to fetch details for:", movie.title);
+        }
+      }
+      const container = document.getElementById("genreSections");
+      for (const genre in genres) {
+        const section = document.createElement("section");
+        section.innerHTML = `<h2 class="text-2xl font-semibold mb-4">${genre}</h2>`;
+
+        const grid = document.createElement("div");
+        grid.className = "movie-grid";
+
+        for (const movie of genres[genre].slice(0, 15)) {
+          const card = document.createElement("div");
+          card.className = "movie-card";
+          card.innerHTML = `
+            <img src="https://image.tmdb.org/t/p/w500${movie.poster_path}" class="rounded-lg" alt="${movie.title}" />
+            <p class="text-sm text-center mt-1">${movie.title}</p>
+          `;
+          card.onclick = async () => {
+            if (!likedMovies.has(movie.movie_id)) {
+              await fetch("/react/", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ movie_id: movie.movie_id, movie_title: movie.title }),
+              });
+              likedMovies.add(movie.movie_id);
+              card.classList.add("liked");
+              if (likedMovies.size >= 5) nextBtn.classList.remove("hidden");
+            }
+          };
+
+          grid.appendChild(card);
+        }
+
+        section.appendChild(grid);
+        container.appendChild(section);
+      }
+    }
+
+    document.getElementById("nextBtn").addEventListener("click", async () => {
+    const token = localStorage.getItem("access_token");
+    await fetch("/users/complete-onboarding", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    window.location.href = "/dashboard";
+  });
+
+    fetchMoviesByGenre();
+  </script>
+</body>
+</html>

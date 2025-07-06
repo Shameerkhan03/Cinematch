@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cinematch - Movie</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: white;
+      padding: 20px;
+    }
+    .neon-text {
+      font-weight: bold;
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .cast-card {
+      width: 120px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .cast-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .comment-box {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .positive { background: rgba(0, 255, 0, 0.1); }
+    .negative { background: rgba(255, 0, 0, 0.1); }
+    .popup {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15, 23, 42, 0.95);
+      padding: 2rem;
+      border-radius: 0.5rem;
+      width: 90%;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+      color: white;
+    }
+    .popup.active {
+      display: block;
+    }
+
+
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="flex items-center justify-between mb-10 relative">
+    <div class="flex items-center space-x-10">
+      <h1 class="text-3xl neon-text font-bold">Cinematch</h1>
+      <a href="/dashboard" class="nav-home hover:underline text-lg">Home</a>
+      <a href="/favourites" class="nav-fav hover:underline text-lg">Favourites</a>
+
+    </div>
+
+   <div class="relative w-full px-10" id="searchContainer">
+    <input
+        id="searchInput"
+        type="text"
+        placeholder="Search movies..."
+        class="w-full py-2 px-4 rounded-lg bg-gray-800 text-white border border-gray-600 focus:outline-none"
+        autocomplete="off"
+    />
+    <ul
+        id="searchSuggestions"
+        class="absolute top-full left-0 right-0 bg-gray-800 text-white border border-gray-700 rounded mt-1 max-h-80 overflow-y-auto hidden z-50"
+    ></ul>
+    </div>
+
+
+
+    <div class="relative">
+      <button id="profileBtn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">
+        User
+      </button>
+      <div id="dropdown" class="hidden absolute top-full right-0 bg-gray-800 border border-gray-600 rounded">
+        <a href="/settings" class="block px-4 py-2 hover:bg-gray-700">Settings</a>
+        <a href="#" id="logoutBtn" class="block px-4 py-2 hover:bg-gray-700">Logout</a>
+      </div>
+    </div>
+
+    <!-- Logout Confirmation Popup -->
+    <div id="logoutPopup" class="popup">
+      <h3 class="text-lg font-bold mb-4">Are you sure you want to logout?</h3>
+      <div class="flex justify-between">
+        <button id="confirmLogoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Yes</button>
+        <button onclick="closePopup('logoutPopup')" class="bg-gray-500 px-4 py-2 rounded">Cancel</button>
+      </div>
+    </div>
+
+  </header>
+
+  <!-- Movie Content -->
+  <div id="movieDetails" class="flex flex-col md:flex-row gap-6 mb-10"></div>
+
+  <!-- Cast Section -->
+  <div class="mb-10">
+    <h2 class="text-2xl font-semibold mb-4">Main Cast</h2>
+    <div id="cast" class="flex overflow-x-auto gap-4"></div>
+  </div>
+
+  <!-- Comments -->
+  <div class="mb-10">
+    <h2 class="text-2xl font-semibold mb-4">Add a Comment</h2>
+    <form id="commentForm" class="mb-4">
+      <textarea id="commentText" rows="3" class="w-full p-3 rounded bg-gray-800 border border-gray-600" placeholder="Write your comment..." required></textarea>
+      <button class="mt-3 px-4 py-1 bg-blue-600 rounded hover:bg-blue-700 text-sm">Post</button>
+    </form>
+    <div id="comments"></div>
+  </div>
+
+  <!-- Cast Bio Popup -->
+  <div id="popup" class="popup"></div>
+
+
+<script>
+
+   const tokenn = localStorage.getItem("access_token");
+
+    // If token is missing, redirect to login
+    if (!tokenn) {
+      window.location.href = "/auth";
+    }
+
+    
+  const params = new URLSearchParams(window.location.search);
+  const movieId = params.get("movie_id");
+  const movieTitle = decodeURIComponent(params.get("title"));
+  const token = localStorage.getItem("access_token");
+  const userId = parseInt(localStorage.getItem("user_id"));
+  const username = localStorage.getItem("username");
+
+  document.getElementById("profileBtn").textContent = username || "User";
+  document.getElementById("profileBtn").addEventListener("click", () => {
+    document.getElementById("dropdown").classList.toggle("hidden");
+  });
+
+  // Show confirmation popup
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  document.getElementById("logoutPopup").classList.add("active");
+});
+
+// Confirm logout → call /auth/logout and clear session
+document.getElementById("confirmLogoutBtn").addEventListener("click", async () => {
+  const token = localStorage.getItem("access_token");
+  await fetch("/auth/logout", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  localStorage.clear();
+  window.location.href = "/auth";
+});
+
+function closePopup(id) {
+  document.getElementById(id).classList.remove("active");
+}
+
+
+  // Highlight Home if on dashboard
+  if (window.location.pathname === "/dashboard") {
+    document.querySelector(".nav-home")?.classList.add("underline", "font-semibold");
+  }
+
+  // Load Movie Details & Cast
+  async function loadDetails() {
+    const [details, credits, likedMovies] = await Promise.all([
+      fetch(`/tmdb/movie/${movieId}`).then(r => r.json()),
+      fetch(`/tmdb/movie/${movieId}/credits`).then(r => r.json()),
+      fetch("/react/", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+    ]);
+
+    const hasLiked = likedMovies.some(l => l.movie_id == movieId);
+    const likeBtnHTML = `
+      <button id="likeBtn" class="${hasLiked ? 'bg-red-600' : 'bg-green-600'} px-3 py-1 text-sm rounded hover:${hasLiked ? 'bg-red-700' : 'bg-green-700'}">
+        ${hasLiked ? 'Unlike' : 'Like'}
+      </button>
+    `;
+
+    document.getElementById("movieDetails").innerHTML = `
+      <img src="https://image.tmdb.org/t/p/w500${details.poster_path}" class="w-[200px] rounded shadow-lg">
+      <div>
+        <h2 class="text-2xl font-bold mb-2 text-white">${details.title}</h2>
+        <p class="mb-4">${details.overview}</p>
+        <div class="space-y-1 mb-4 mt-6">
+          <p><strong>Rating:</strong> ${details.vote_average.toFixed(1)}/10</p>
+          <p><strong>Genre:</strong> ${details.genres.map(g => g.name).join(", ")}</p>
+          <p><strong>Release Date:</strong> ${details.release_date}</p>
+          <p><strong>Runtime:</strong> ${details.runtime} minutes</p>
+          <p><strong>Status:</strong> ${details.status}</p>
+        </div>
+        ${likeBtnHTML}
+      </div>
+    `;
+
+    // Like Toggle
+    const liked = await fetch("/react/", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json());
+
+    const likeBtn = document.getElementById("likeBtn");
+
+    let userLiked = hasLiked;
+    likeBtn.textContent = userLiked ? "Unlike" : "Like";
+    likeBtn.classList.toggle("bg-red-600", userLiked);
+    likeBtn.classList.toggle("bg-green-600", !userLiked);
+
+    likeBtn.onclick = async () => {
+      if (!userLiked) {
+        const res = await fetch("/react/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ movie_id: movieId, movie_title: movieTitle })
+        });
+
+        if (res.ok) {
+          likeBtn.textContent = "Unlike";
+          likeBtn.classList.remove("bg-green-600");
+          likeBtn.classList.add("bg-red-600");
+          userLiked = true;
+        }
+      } else {
+        const res = await fetch("/react/", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ movie_id: movieId })
+        });
+
+        if (res.ok) {
+          likeBtn.textContent = "Like";
+          likeBtn.classList.remove("bg-red-600");
+          likeBtn.classList.add("bg-green-600");
+          userLiked = false;
+        }
+      }
+    };
+
+    // Cast cards
+    const castDiv = document.getElementById("cast");
+    credits.cast.slice(0, 15).forEach(actor => {
+      const card = document.createElement("div");
+      card.className = "cast-card";
+      card.innerHTML = `
+        <img src="https://image.tmdb.org/t/p/w185${actor.profile_path}" class="rounded-lg mb-1" />
+        <p class="text-sm">${actor.name}</p>
+      `;
+      card.onclick = async () => {
+        const res = await fetch(`/tmdb/person/${actor.id}`);
+        const data = await res.json();
+        const popup = document.getElementById("popup");
+        popup.innerHTML = `
+          <div class="bg-gray-900 text-white p-4 rounded-lg shadow-lg max-w-3xl mx-auto flex flex-col md:flex-row gap-6 overflow-hidden">
+            <img src="https://image.tmdb.org/t/p/w300${data.profile_path}" alt="${data.name}" class="w-40 h-auto rounded-lg object-cover flex-shrink-0" />
+            <div class="overflow-y-auto max-h-[60vh] pr-2">
+              <h2 class="text-xl font-bold mb-3">${data.name.toUpperCase()}</h2>
+              <p class="mb-2"><strong>Birthday:</strong> ${data.birthday || "N/A"}</p>
+              <p class="mb-2"><strong>Place of Birth:</strong> ${data.place_of_birth || "N/A"}</p>
+              <p class="mt-4 text-sm leading-relaxed text-justify">
+                <strong>Biography:</strong> ${data.biography || "No biography available."}
+              </p>
+            </div>
+          </div>
+          <div class="mt-4 text-center">
+            <button onclick="document.getElementById('popup').classList.remove('active')" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">Close</button>
+          </div>
+        `;
+
+
+        popup.classList.add("active");
+      };
+      castDiv.appendChild(card);
+    });
+  }
+
+  // Load Comments
+  async function loadComments() {
+  const res = await fetch(`/comments/${movieId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const comments = await res.json();
+  const container = document.getElementById("comments");
+  container.innerHTML = "";
+
+  comments.forEach(c => {
+    const div = document.createElement("div");
+    div.className = `comment-box ${c.sentiment}`;
+    div.innerHTML = `
+      <p class="text-sm mb-2"><strong>${username}</strong> • ${new Date(c.created_at).toLocaleString()}</p>
+      <p>${c.text_comment}</p>
+    `;
+    container.appendChild(div);
+  });
+}
+
+document.getElementById("commentForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = document.getElementById("commentText").value;
+  await fetch("/comments/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      movie_id: movieId,
+      movie_title: movieTitle,
+      text_comment: text
+    })
+  });
+  document.getElementById("commentText").value = "";
+  loadComments();
+});
+
+  // Search Suggestions Logic
+  const searchInput = document.getElementById("searchInput");
+  const suggestionsList = document.getElementById("searchSuggestions");
+
+  let debounceTimeout;
+  searchInput.addEventListener("input", () => {
+    clearTimeout(debounceTimeout);
+    const query = searchInput.value.trim();
+    if (!query) {
+      suggestionsList.classList.add("hidden");
+      suggestionsList.innerHTML = "";
+      return;
+    }
+
+    debounceTimeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`/recommend/search?query=${encodeURIComponent(query)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error("No matches");
+
+        const data = await res.json();
+
+        suggestionsList.innerHTML = "";
+        data.forEach(movie => {
+          const li = document.createElement("li");
+          li.className = "px-4 py-2 hover:bg-blue-600 cursor-pointer";
+          const poster = movie.poster_path
+            ? `https://image.tmdb.org/t/p/w92${movie.poster_path}`
+            : "https://via.placeholder.com/50x75?text=No+Poster";
+
+            li.innerHTML = `
+            <div class="flex items-center gap-3">
+                <img src="${poster}" class="w-10 h-14 object-cover rounded shadow" />
+                <span>${movie.title}</span>
+            </div>
+            `;
+
+          li.onclick = () => {
+            suggestionsList.classList.add("hidden");
+            window.location.href = `/movie?movie_id=${movie.movie_id}&title=${encodeURIComponent(movie.title)}`;
+          };
+          suggestionsList.appendChild(li);
+        });
+
+        suggestionsList.classList.remove("hidden");
+      } catch (err) {
+        suggestionsList.classList.add("hidden");
+        suggestionsList.innerHTML = "";
+      }
+    }, 300);
+  });
+
+    document.addEventListener("click", (e) => {
+      if (!document.getElementById("searchContainer").contains(e.target)) {
+        suggestionsList.classList.add("hidden");
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("dropdown");
+    const profileBtn = document.getElementById("profileBtn");
+    const logoutPopup = document.getElementById("logoutPopup");
+
+    if (!dropdown.contains(e.target) && !profileBtn.contains(e.target)) {
+      dropdown.classList.add("hidden");
+    }
+
+    if (logoutPopup.classList.contains("active") &&
+        !logoutPopup.contains(e.target) &&
+        e.target.id !== "logoutBtn") {
+      logoutPopup.classList.remove("active");
+    }
+
+    if (!document.getElementById("searchContainer").contains(e.target)) {
+      document.getElementById("searchSuggestions").classList.add("hidden");
+    }
+  });
+
+
+  // Load everything
+  loadDetails();
+  loadComments();
+
+  function editComment(commentId, oldText) {
+  document.getElementById(`comment-text-${commentId}`).classList.add("hidden");
+  document.getElementById(`edit-form-${commentId}`).classList.remove("hidden");
+  document.getElementById(`edit-input-${commentId}`).focus();
+}
+
+function cancelEdit(commentId) {
+  document.getElementById(`edit-form-${commentId}`).classList.add("hidden");
+  document.getElementById(`comment-text-${commentId}`).classList.remove("hidden");
+}
+
+</script>
+
+</body>
+</html>
