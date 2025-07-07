@@ -1,7 +1,7 @@
 import requests
 import os
 
-TMDB_API_KEY = os.getenv("TMDB_API_KEY", "b43b8e8ad53a7df2ab92c6bb80de9eec")
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 
 BASE_URL = "https://api.themoviedb.org/3"
 IMG_BASE_URL = "https://image.tmdb.org/t/p/w500"

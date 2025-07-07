@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+import os
 from fastapi import FastAPI
 from .database import engine
 from . import models
@@ -7,7 +9,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
-import os
+
+
+load_dotenv()
 
 models.Base.metadata.create_all(bind=engine)
 
